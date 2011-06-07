@@ -1,0 +1,786 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="Bugzilla" version="3.0">
+  <variables />
+  <connections>
+    <connection name="Bugzilla" type="Mysql">
+      <host>localhost</host>
+      <database>bugzilla_test</database>
+      <user>root</user>
+      <fetch>buffered</fetch>
+    </connection>
+    <connection name="Palo" type="Palo">
+      <host>localhost</host>
+      <port>7921</port>
+      <user>admin</user>
+      <password encrypted="true">cPNZU9OmGplEEZ8OTgkfwg==</password>
+      <database>bugzilla</database>
+    </connection>
+  </connections>
+  <extracts>
+    <extract name="ExtractProducts" type="Relational">
+      <connection nameref="Bugzilla" />
+      <query>
+<![CDATA[SELECT
+	id,
+	name
+FROM
+	products]]>
+      </query>
+      <alias_map>
+        <alias origin="id" name="product_id">1</alias>
+        <alias origin="name" name="product_name">2</alias>
+      </alias_map>
+    </extract>
+    <extract name="ExtractVersions" type="Relational">
+      <connection nameref="Bugzilla" />
+      <query>
+<![CDATA[SELECT
+	product_id,
+	value
+FROM
+	versions]]>
+      </query>
+      <alias_map>
+        <alias origin="product_id" name="product_id">1</alias>
+        <alias origin="value" name="version">2</alias>
+      </alias_map>
+    </extract>
+    <extract name="Developers" type="Relational">
+      <connection nameref="Bugzilla" />
+      <query>
+<![CDATA[SELECT
+	userid,
+	realname
+FROM
+	profiles]]>
+      </query>
+      <alias_map>
+        <alias origin="userid" name="developer_id">1</alias>
+        <alias origin="realname" name="developer_name">2</alias>
+      </alias_map>
+    </extract>
+    <extract name="Priorities" type="Relational">
+      <connection nameref="Bugzilla" />
+      <query>
+<![CDATA[SELECT
+	value
+FROM
+	priority]]>
+      </query>
+      <alias_map>
+        <alias origin="value" name="priority">1</alias>
+      </alias_map>
+    </extract>
+    <extract name="ExtractBugs" type="Relational">
+      <connection nameref="Bugzilla" />
+      <query>
+<![CDATA[SELECT
+	assigned_to,
+	bug_id,
+	bug_status,
+	estimated_time,
+	priority,
+	product_id,
+	remaining_time,
+	short_desc,
+	version
+FROM
+	bugs]]>
+      </query>
+      <alias_map>
+        <alias origin="assigned_to" name="developer_id">1</alias>
+        <alias origin="bug_id" name="bug_id">2</alias>
+        <alias origin="bug_status" name="bug_status">3</alias>
+        <alias origin="estimated_time" name="bug_estimated_time">4</alias>
+        <alias origin="priority" name="priority">5</alias>
+        <alias origin="product_id" name="product_id">6</alias>
+        <alias origin="remaining_time" name="bug_remaining_time">7</alias>
+        <alias origin="short_desc" name="bug_description">8</alias>
+        <alias origin="version" name="version">9</alias>
+      </alias_map>
+    </extract>
+    <extract name="BugStatus" type="Relational">
+      <connection nameref="Bugzilla" />
+      <query>
+<![CDATA[SELECT
+	is_open,
+	value
+FROM
+	bug_status]]>
+      </query>
+      <alias_map>
+        <alias origin="is_open" name="bug_is_open">1</alias>
+        <alias origin="value" name="bug_status">2</alias>
+      </alias_map>
+    </extract>
+    <extract name="ExtractActivities" type="Relational">
+      <connection nameref="Bugzilla" />
+      <query>
+<![CDATA[SELECT
+	added,
+	bug_id,
+	bug_when,
+	fieldid,
+	who
+FROM
+	bugs_activity]]>
+      </query>
+      <alias_map>
+        <alias origin="added" name="activity_value">1</alias>
+        <alias origin="bug_id" name="bug_id">2</alias>
+        <alias origin="bug_when" name="activity_date">3</alias>
+        <alias origin="fieldid" name="activity_field">4</alias>
+        <alias origin="who" name="developer_id">5</alias>
+      </alias_map>
+    </extract>
+  </extracts>
+  <transforms>
+    <transform name="JoinProductsAndVersions" type="TableJoin">
+      <sources>
+        <source nameref="ExtractProducts" />
+        <source nameref="ExtractVersions" />
+      </sources>
+      <joins>
+        <join type="inner">
+          <left nameref="ExtractProducts">
+            <key nameref="product_id" />
+          </left>
+          <right nameref="ExtractVersions">
+            <key nameref="product_id" />
+          </right>
+        </join>
+      </joins>
+    </transform>
+    <transform name="Products" type="FieldTransform">
+      <sources>
+        <source nameref="JoinProductsAndVersions" />
+      </sources>
+      <target>
+        <coordinates>
+          <coordinate name="product_id">
+            <input nameref="product_id" />
+          </coordinate>
+          <coordinate name="product_name">
+            <input nameref="product_name" />
+          </coordinate>
+          <coordinate name="product_version">
+            <input nameref="product_version" />
+          </coordinate>
+          <coordinate name="version">
+            <input nameref="version" />
+          </coordinate>
+        </coordinates>
+      </target>
+      <functions>
+        <function name="product_version" type="Concatenation">
+          <inputs>
+            <input nameref="product_name" />
+            <input nameref="version" />
+          </inputs>
+          <parameters>
+            <template>#{product_name}: #{version}</template>
+          </parameters>
+        </function>
+      </functions>
+    </transform>
+    <transform name="TransformSomeBasicBugFields" type="FieldTransform">
+      <sources>
+        <source nameref="ExtractBugs" />
+      </sources>
+      <target>
+        <coordinates>
+          <coordinate name="bug_estimated_time">
+            <input nameref="bug_estimated_time_decimal" />
+          </coordinate>
+          <coordinate name="bug_id">
+            <input nameref="bug_id" />
+          </coordinate>
+          <coordinate name="bug_name">
+            <input nameref="bug_name" />
+          </coordinate>
+          <coordinate name="bug_remaining_time">
+            <input nameref="bug_remaining_time_decimal" />
+          </coordinate>
+          <coordinate name="bug_status">
+            <input nameref="bug_status" />
+          </coordinate>
+          <coordinate name="developer_id">
+            <input nameref="developer_id" />
+          </coordinate>
+          <coordinate name="priority">
+            <input nameref="priority" />
+          </coordinate>
+          <coordinate name="product_id">
+            <input nameref="product_id" />
+          </coordinate>
+          <coordinate name="version">
+            <input nameref="version" />
+          </coordinate>
+        </coordinates>
+      </target>
+      <functions>
+        <function name="bug_remaining_time_decimal" type="NumberFormat">
+          <inputs>
+            <input nameref="bug_remaining_time" />
+          </inputs>
+          <parameters>
+            <pattern>0.00</pattern>
+          </parameters>
+        </function>
+        <function name="bug_estimated_time_decimal" type="NumberFormat">
+          <inputs>
+            <input nameref="bug_estimated_time" />
+          </inputs>
+          <parameters>
+            <pattern>0.00</pattern>
+          </parameters>
+        </function>
+        <function name="bug_id_5_digits" type="NumberFormat">
+          <inputs>
+            <input nameref="bug_id" />
+          </inputs>
+          <parameters>
+            <pattern>00000</pattern>
+          </parameters>
+        </function>
+        <function name="bug_name" type="Concatenation">
+          <inputs>
+            <input nameref="bug_description" />
+            <input nameref="bug_id_5_digits" />
+          </inputs>
+          <parameters>
+            <template>#{bug_id_5_digits}: #{bug_description}</template>
+          </parameters>
+        </function>
+      </functions>
+    </transform>
+    <transform name="JoinBugsAndDevelopers" type="TableJoin">
+      <sources>
+        <source nameref="TransformSomeBasicBugFields" />
+        <source nameref="Developers" />
+      </sources>
+      <joins>
+        <join type="inner">
+          <left nameref="TransformSomeBasicBugFields">
+            <key nameref="developer_id" />
+          </left>
+          <right nameref="Developers">
+            <key nameref="developer_id" />
+          </right>
+        </join>
+      </joins>
+    </transform>
+    <transform name="JoinBugsWithDevsAndProducts" type="TableJoin">
+      <sources>
+        <source nameref="JoinBugsAndDevelopers" />
+        <source nameref="Products" />
+      </sources>
+      <joins>
+        <join type="inner">
+          <left nameref="JoinBugsAndDevelopers">
+            <key nameref="product_id" />
+            <key nameref="version" />
+          </left>
+          <right nameref="Products">
+            <key nameref="product_id" />
+            <key nameref="version" />
+          </right>
+        </join>
+      </joins>
+    </transform>
+    <transform name="JoinBugsWithDevsProdsAndStatus" type="TableJoin">
+      <sources>
+        <source nameref="JoinBugsWithDevsAndProducts" />
+        <source nameref="BugStatus" />
+      </sources>
+      <joins>
+        <join type="inner">
+          <left nameref="JoinBugsWithDevsAndProducts">
+            <key nameref="bug_status" />
+          </left>
+          <right nameref="BugStatus">
+            <key nameref="bug_status" />
+          </right>
+        </join>
+      </joins>
+    </transform>
+    <transform name="Bugs" type="FieldTransform">
+      <sources>
+        <source nameref="JoinBugsWithDevsProdsAndStatus" />
+      </sources>
+      <target>
+        <coordinates>
+          <coordinate name="bug_developer_name">
+            <input nameref="developer_name" />
+          </coordinate>
+          <coordinate name="bug_estimated_time">
+            <input nameref="bug_estimated_time" />
+          </coordinate>
+          <coordinate name="bug_id">
+            <input nameref="bug_id" />
+          </coordinate>
+          <coordinate name="bug_is_open">
+            <input nameref="bug_is_open" />
+          </coordinate>
+          <coordinate name="bug_name">
+            <input nameref="bug_name" />
+          </coordinate>
+          <coordinate name="bug_remaining_time">
+            <input nameref="bug_remaining_time" />
+          </coordinate>
+          <coordinate name="product_name">
+            <input nameref="product_name" />
+          </coordinate>
+          <coordinate name="product_version">
+            <input nameref="product_version" />
+          </coordinate>
+          <coordinate name="priority">
+            <input nameref="priority" />
+          </coordinate>
+          <coordinate name="version">
+            <input nameref="version" />
+          </coordinate>
+        </coordinates>
+      </target>
+    </transform>
+    <transform name="Activities" type="FieldTransform">
+      <sources>
+        <source nameref="JoinActivitiesDevsAndBugs" />
+      </sources>
+      <target>
+        <coordinates>
+          <coordinate name="activity_day">
+            <input nameref="activity_day" />
+          </coordinate>
+          <coordinate name="activity_developer_name">
+            <input nameref="developer_name" />
+          </coordinate>
+          <coordinate name="activity_field">
+            <input nameref="activity_field" />
+          </coordinate>
+          <coordinate name="activity_value">
+            <input nameref="activity_value" />
+          </coordinate>
+          <coordinate name="bug_developer_name">
+            <input nameref="bug_developer_name" />
+          </coordinate>
+          <coordinate name="bug_estimated_time">
+            <input nameref="bug_estimated_time" />
+          </coordinate>
+          <coordinate name="bug_id">
+            <input nameref="bug_id" />
+          </coordinate>
+          <coordinate name="bug_is_open">
+            <input nameref="bug_is_open" />
+          </coordinate>
+          <coordinate name="bug_name">
+            <input nameref="bug_name" />
+          </coordinate>
+          <coordinate name="bug_remaining_time">
+            <input nameref="bug_remaining_time" />
+          </coordinate>
+          <coordinate name="priority">
+            <input nameref="priority" />
+          </coordinate>
+          <coordinate name="product_name">
+            <input nameref="product_name" />
+          </coordinate>
+          <coordinate name="product_version">
+            <input nameref="product_version" />
+          </coordinate>
+          <coordinate name="version">
+            <input nameref="version" />
+          </coordinate>
+        </coordinates>
+      </target>
+      <functions>
+        <function name="activity_day" type="DateFormat">
+          <inputs>
+            <input nameref="activity_date" />
+          </inputs>
+          <parameters>
+            <targetformat>yyyy-MM-dd</targetformat>
+          </parameters>
+        </function>
+      </functions>
+    </transform>
+    <transform name="JoinActivitiesAndDevelopers" type="TableJoin">
+      <sources>
+        <source nameref="ExtractActivities" />
+        <source nameref="Developers" />
+      </sources>
+      <joins>
+        <join type="inner">
+          <left nameref="ExtractActivities">
+            <key nameref="developer_id" />
+          </left>
+          <right nameref="Developers">
+            <key nameref="developer_id" />
+          </right>
+        </join>
+      </joins>
+    </transform>
+    <transform name="JoinActivitiesDevsAndBugs" type="TableJoin">
+      <sources>
+        <source nameref="JoinActivitiesAndDevelopers" />
+        <source nameref="Bugs" />
+      </sources>
+      <joins>
+        <join type="inner">
+          <left nameref="JoinActivitiesAndDevelopers">
+            <key nameref="bug_id" />
+          </left>
+          <right nameref="Bugs">
+            <key nameref="bug_id" />
+          </right>
+        </join>
+      </joins>
+    </transform>
+    <transform name="OpenBugs" type="TableView">
+      <sources>
+        <source nameref="Bugs" />
+      </sources>
+      <sorter>
+        <input nameref="bug_name" />
+      </sorter>
+      <filter>
+        <input nameref="bug_is_open">
+          <accept operator="equal" value="1" />
+        </input>
+      </filter>
+    </transform>
+    <transform name="FilterEffortActivities" type="TableView">
+      <sources>
+        <source nameref="Activities" />
+      </sources>
+      <sorter>
+        <input nameref="bug_name" />
+      </sorter>
+      <filter>
+        <input nameref="activity_field">
+          <accept operator="equal" value="47" />
+        </input>
+      </filter>
+    </transform>
+    <transform name="Times" type="FieldTransform">
+      <sources>
+        <source nameref="FilterEffortActivities" />
+      </sources>
+      <target>
+        <coordinates>
+          <coordinate name="day">
+            <input nameref="activity_day" />
+          </coordinate>
+          <coordinate name="month">
+            <input nameref="month" />
+          </coordinate>
+          <coordinate name="year">
+            <input nameref="year" />
+          </coordinate>
+        </coordinates>
+      </target>
+      <functions>
+        <function name="year" type="DateFormat">
+          <inputs>
+            <input nameref="activity_day" />
+          </inputs>
+          <parameters>
+            <targetformat>yyyy</targetformat>
+          </parameters>
+        </function>
+        <function name="month" type="DateFormat">
+          <inputs>
+            <input nameref="activity_day" />
+          </inputs>
+          <parameters>
+            <targetformat>yyyy-MM</targetformat>
+          </parameters>
+        </function>
+      </functions>
+    </transform>
+    <transform name="EffortActivities" type="FieldTransform">
+      <sources>
+        <source nameref="FilterEffortActivities" />
+      </sources>
+      <target>
+        <coordinates>
+          <coordinate name="activity_day">
+            <input nameref="activity_day" />
+          </coordinate>
+          <coordinate name="activity_developer_name">
+            <input nameref="activity_developer_name" />
+          </coordinate>
+          <coordinate name="activity_effort">
+            <input nameref="activity_effort" />
+          </coordinate>
+          <coordinate name="bug_developer_name">
+            <input nameref="bug_developer_name" />
+          </coordinate>
+          <coordinate name="bug_estimated_time">
+            <input nameref="bug_estimated_time" />
+          </coordinate>
+          <coordinate name="bug_id">
+            <input nameref="bug_id" />
+          </coordinate>
+          <coordinate name="bug_is_open">
+            <input nameref="bug_is_open" />
+          </coordinate>
+          <coordinate name="bug_name">
+            <input nameref="bug_name" />
+          </coordinate>
+          <coordinate name="bug_remaining_time">
+            <input nameref="bug_remaining_time" />
+          </coordinate>
+          <coordinate name="priority">
+            <input nameref="priority" />
+          </coordinate>
+          <coordinate name="product_name">
+            <input nameref="product_name" />
+          </coordinate>
+          <coordinate name="product_version">
+            <input nameref="product_version" />
+          </coordinate>
+          <coordinate name="version">
+            <input nameref="version" />
+          </coordinate>
+        </coordinates>
+      </target>
+      <functions>
+        <function name="activity_effort" type="NumberFormat">
+          <inputs>
+            <input nameref="activity_value" />
+          </inputs>
+          <parameters>
+            <pattern>0.00</pattern>
+          </parameters>
+        </function>
+      </functions>
+    </transform>
+    <transform name="TransformDevelopersIntoHierarchy" type="TreeFH">
+      <sources>
+        <source nameref="Developers" />
+      </sources>
+      <target type="text" default="Alle">
+        <levels>
+          <level>
+            <input constant="Alle" />
+          </level>
+          <level>
+            <input nameref="developer_name" />
+          </level>
+        </levels>
+      </target>
+    </transform>
+    <transform name="TransformProductsIntoHierarchy" type="TreeFH">
+      <sources>
+        <source nameref="Products" />
+      </sources>
+      <target type="text" default="Alle">
+        <levels>
+          <level>
+            <input constant="Alle" />
+          </level>
+          <level>
+            <input nameref="product_name" />
+          </level>
+          <level>
+            <input nameref="product_version" />
+          </level>
+        </levels>
+      </target>
+    </transform>
+    <transform name="TransformTimeIntoHierarchy" type="TreeFH">
+      <sources>
+        <source nameref="Times" />
+      </sources>
+      <target type="text" default="Alle">
+        <levels>
+          <level>
+            <input constant="Alle" />
+          </level>
+          <level>
+            <input nameref="year" />
+          </level>
+          <level>
+            <input nameref="month" />
+          </level>
+          <level>
+            <input nameref="day" />
+          </level>
+        </levels>
+      </target>
+    </transform>
+    <transform name="TransformOpenBugsIntoHierarchy" type="TreeFH">
+      <sources>
+        <source nameref="OpenBugs" />
+      </sources>
+      <target type="text">
+        <levels>
+          <level>
+            <input constant="Alle" />
+          </level>
+          <level>
+            <input nameref="priority" />
+          </level>
+          <level>
+            <input nameref="bug_name" />
+          </level>
+        </levels>
+      </target>
+    </transform>
+    <transform name="TransformPrioritiesIntoHierarchy" type="TreeFH">
+      <sources>
+        <source nameref="Priorities" />
+      </sources>
+      <target type="text" default="Alle">
+        <levels>
+          <level>
+            <input constant="Alle" />
+          </level>
+          <level>
+            <input nameref="priority" />
+          </level>
+        </levels>
+      </target>
+    </transform>
+    <transform name="JoinOpenBugAndPriorityHierarchies" type="TreeJoin">
+      <sources>
+        <source nameref="TransformPrioritiesIntoHierarchy" root="Alle" />
+        <source nameref="TransformOpenBugsIntoHierarchy" root="Alle" />
+      </sources>
+    </transform>
+    <transform name="SumEffortsFromSameDayAndDeveloperForSameProduct" type="TableTransform">
+      <sources>
+        <source nameref="EffortActivities" />
+      </sources>
+      <target>
+        <coordinates>
+          <coordinate name="Produkt">
+            <input nameref="product_version" />
+          </coordinate>
+          <coordinate name="Zeit">
+            <input nameref="activity_day" />
+          </coordinate>
+          <coordinate name="Entwickler">
+            <input nameref="activity_developer_name" />
+          </coordinate>
+        </coordinates>
+        <measures>
+          <measure name="Aufwand" aggregate="sum" type="numeric">
+            <input nameref="activity_effort" />
+          </measure>
+        </measures>
+      </target>
+    </transform>
+    <transform name="SumPlannedEffortsFromSameDeveloperForSameProduct" type="TableTransform">
+      <sources>
+        <source nameref="Bugs" />
+      </sources>
+      <target>
+        <coordinates>
+          <coordinate name="Produkt">
+            <input nameref="product_version" />
+          </coordinate>
+          <coordinate name="Entwickler">
+            <input nameref="bug_developer_name" />
+          </coordinate>
+        </coordinates>
+        <measures>
+          <measure name="Planaufwand" aggregate="sum" type="numeric">
+            <input nameref="bug_estimated_time" />
+          </measure>
+        </measures>
+      </target>
+    </transform>
+    <transform name="OpenBugsCube" type="FieldTransform">
+      <sources>
+        <source nameref="OpenBugs" />
+      </sources>
+      <target>
+        <coordinates>
+          <coordinate name="Offene Bugs">
+            <input nameref="bug_name" />
+          </coordinate>
+          <coordinate name="Entwickler">
+            <input nameref="bug_developer_name" />
+          </coordinate>
+          <coordinate name="Restaufwand">
+            <input nameref="bug_remaining_time" />
+          </coordinate>
+        </coordinates>
+      </target>
+    </transform>
+  </transforms>
+  <loads>
+    <load name="LoadDevelopers" type="Dimension">
+      <source nameref="TransformDevelopersIntoHierarchy" />
+      <connection nameref="Palo" />
+      <dimension name="Entwickler">
+        <elements />
+        <consolidations />
+        <attributes />
+      </dimension>
+      <mode>update</mode>
+    </load>
+    <load name="LoadProducts" type="Dimension">
+      <source nameref="TransformProductsIntoHierarchy" />
+      <connection nameref="Palo" />
+      <dimension name="Produkt">
+        <elements />
+        <consolidations />
+        <attributes />
+      </dimension>
+      <mode>update</mode>
+    </load>
+    <load name="LoadTime" type="Dimension">
+      <source nameref="TransformTimeIntoHierarchy" />
+      <connection nameref="Palo" />
+      <dimension name="Zeit">
+        <elements />
+        <consolidations />
+        <attributes />
+      </dimension>
+      <mode>update</mode>
+    </load>
+    <load name="LoadOpenBugs" type="Dimension">
+      <source nameref="JoinOpenBugAndPriorityHierarchies" />
+      <connection nameref="Palo" />
+      <dimension name="Offene Bugs">
+        <elements />
+        <consolidations />
+        <attributes />
+      </dimension>
+      <mode>update</mode>
+    </load>
+    <load name="LoadEffortCube" type="Cube">
+      <source nameref="SumEffortsFromSameDayAndDeveloperForSameProduct" />
+      <connection nameref="Palo" />
+      <cube name="Aufwand-Ist" />
+      <mode>update</mode>
+    </load>
+    <load name="LoadPlannedEffortCube" type="Cube">
+      <source nameref="SumPlannedEffortsFromSameDeveloperForSameProduct" />
+      <connection nameref="Palo" />
+      <cube name="Aufwand-Plan" />
+      <mode>update</mode>
+    </load>
+    <load name="LoadOpenBugsCube" type="Cube">
+      <source nameref="OpenBugsCube" />
+      <connection nameref="Palo" />
+      <cube name="Bugs-Offen" />
+      <mode>update</mode>
+    </load>
+  </loads>
+  <jobs>
+    <job name="LoadAll">
+      <load nameref="LoadDevelopers" />
+      <load nameref="LoadProducts" />
+      <load nameref="LoadTime" />
+      <load nameref="LoadOpenBugs" />
+      <load nameref="LoadEffortCube" />
+      <load nameref="LoadPlannedEffortCube" />
+      <load nameref="LoadOpenBugsCube" />
+    </job>
+  </jobs>
+</project>
+
