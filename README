@@ -1,1 +1,19 @@
-This is a test.
+Zielsetzung
+---
+Bugzilla kann im Rahmen von kleinen und mittelgroßen Projekten nicht nur der Verfolgung von Fehlern und offenen Punkten dienen: Es bietet auch Eingabefelder für Ist- und Planaufwand zu einzelnen Aufgaben. Auf diese Weise läßt sich ein Projekt-Controlling nicht ersetzen, aber durch die gute Integration in die Entwicklungsumgebung (bspw. via Mylyn) sind hier aktuelle Restaufwandsschätzungen der Entwickler zu erwarten, die als Steuerungsinstrument hochinteressant sind.
+
+Die Auswertungsmöglichkeiten die Bugzilla dazu anbietet sind zwar umfassend, aber unhandlich und im Detail unvollständig. Hier kann das in Excel integriebare Analysewerkzeug Palo (Jedox AG) seine Stärken ausspielen und macht es einfach Soll-Ist-Vergleiche anzustellen oder Szenarioplanung zu betreiben.
+
+Ziel von bugzilla2palo ist daher eine Datenübernahme von Bugzilla zu Palo zu erreichen sowie einfache Auswertungen dazu in Excel zu demonstrieren.
+
+Voraussetzungen
+---
+Umgesetzt wurde die Datenübernahme als Palo-ETL-Prozess. Es werde benötigt:
+- Palo ETL-Server
+- Palo Server
+- Bugzilla bzw. Zugang zur darunterliegenden MySQL-Datenbank
+
+Hintergrund und Lizenz
+---
+bugzilla2palo wurde im Rahmen eines Evaluationsprojektes gemeinsam mit der Hochschule Niederrhein realisiert. 
+Die Lösung steht ohne jegliche Gewährleistung unter einer Apache Software License, Version 2.0 zur freien Verfügung.
